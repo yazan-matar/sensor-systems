@@ -27,7 +27,10 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
+typedef struct{
+	int tone;
+	int duration;
+}Note;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -37,6 +40,21 @@
 #define LED_PIN					GPIOA, GPIO_PIN_5
 #define MICROPHONE				GPIOA, GPIO_PIN_8
 
+#define TEMPO	75
+
+#define _DO4	3205
+#define _DOD4	3031
+#define _RE4	2856
+#define _RED4	2699
+#define _MI4	2544
+#define _FA4	2405
+#define _FAD4	2269
+#define _SOL4	2141
+#define _SOLD4	2023
+#define _LA4	1908
+#define _LAD4	1801
+#define _SI4	1699
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -45,12 +63,40 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-int fingerSnapped = 1;
+
+int n = 1;
+Note score[] = {
+		{_SOL4, 6},
+		{_LA4, 2},
+		{_SOL4, 4},
+		{_FA4, 4},
+		{_MI4, 4},
+		{_FA4, 4},
+		{_SOL4, 8},
+		{_RE4, 4},
+		{_MI4, 4},
+		{_FA4, 8},
+		{_MI4, 4},
+		{_FA4, 4},
+		{_SOL4, 8},
+		{_SOL4, 6},
+		{_LA4, 2},
+		{_SOL4, 4},
+		{_FA4, 4},
+		{_MI4, 4},
+		{_FA4, 4},
+		{_SOL4, 8},
+		{_RE4, 8},
+		{_SOL4, 8},
+		{_MI4, 4},
+		{_DO4, 12}
+};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -58,30 +104,99 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_TIM2_Init(void);
+static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
-
+void playnote(Note note);
+void playsong(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-//void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
-//{
-//	GPIO_PinState snapfinger;
-//	GPIO_PinState pushbutton;
-//
-//	switch (GPIO_Pin){
-//	case GPIO_PIN_8: //Microphone
-//		snapfinger = HAL_GPIO_ReadPin(MICROPHONE);
-//		HAL_GPIO_WritePin(LED_PIN, snapfinger);
-//		break;
-//	case GPIO_PIN_13: //Button
-//		pushbutton = HAL_GPIO_ReadPin(BLUE_BUTTON);
-//		HAL_GPIO_WritePin(LED_PIN, !pushbutton);
-//		break;
-//	default:
-//		break;
-//	}
-//}
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+	GPIO_PinState snapfinger;
+	GPIO_PinState pushbutton;
+
+	switch (GPIO_Pin){
+	case GPIO_PIN_8: //Microphone
+		snapfinger = HAL_GPIO_ReadPin(MICROPHONE);
+		HAL_GPIO_WritePin(LED_PIN, snapfinger);
+//		 playnote(score[n]);
+//		 n++;
+		playsong();
+		break;
+	case GPIO_PIN_13: //Button
+		pushbutton = HAL_GPIO_ReadPin(BLUE_BUTTON);
+		HAL_GPIO_WritePin(LED_PIN, !pushbutton);
+		break;
+	default:
+		break;
+	}
+}
+
+void playnote(Note note){
+//	  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+//	  TIM_MasterConfigTypeDef sMasterConfig = {0};
+	  TIM_OC_InitTypeDef sConfigOC = {0};
+//	  TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
+
+
+	  htim1.Instance = TIM1;
+	  htim1.Init.Prescaler = 100 - 1;
+	  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
+	  htim1.Init.Period = note.tone;
+	  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+	  htim1.Init.RepetitionCounter = 0;
+	  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+	  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
+	  {
+	    Error_Handler();
+	  }
+	  if (HAL_TIM_PWM_Init(&htim1) != HAL_OK)
+	  {
+	    Error_Handler();
+	  }
+
+	  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+	  sConfigOC.Pulse = note.tone / 2;
+	  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+	  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
+	  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+	  sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
+	  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+	  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+	  {
+	    Error_Handler();
+	  }
+
+//	  HAL_TIM_Base_Start_IT(&htim1);
+	  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
+//	  HAL_Delay(note.duration * TEMPO);
+
+	  for (int i = 0; i < note.duration * TEMPO * 5700; ++i) {
+
+	  }
+
+//	  __HAL_TIM_SET_COUNTER(&htim1, 0);
+//	  while (1) {
+//		  int x = __HAL_TIM_GET_COUNTER(&htim1);
+//		  int y = htim1.Init.Period;
+//		  if(__HAL_TIM_GET_COUNTER(&htim1) >= htim1.Init.Period)
+//			  break;
+//	  }
+//	  HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_2);
+//	  HAL_TIM_Base_Stop_IT(&htim1);
+
+	  HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_2);
+
+}
+
+void playsong(){
+	int length = sizeof(score)/sizeof(score[0]);
+	for (int i = 0; i < length; ++i) {
+		playnote(score[i]);
+	}
+}
 /* USER CODE END 0 */
 
 /**
@@ -114,20 +229,18 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   MX_TIM2_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
-  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+//  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+//  playsong();
+//  HAL_InitTick(0);
+//  HAL_NVIC_SetPriority(PVD_IRQn, 1, 0U);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  if(__HAL_TIM_GET_COUNTER(&htim2) == htim2.Init.Period){
-		  HAL_GPIO_TogglePin(LED_PIN);
-//		  __HAL_TIM_SET_COUNTER(&htim2, 0);
-	  }
-//	  else
-//		  HAL_GPIO_WritePin(LED_PIN, 0);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -180,6 +293,81 @@ void SystemClock_Config(void)
 }
 
 /**
+  * @brief TIM1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM1_Init(void)
+{
+
+  /* USER CODE BEGIN TIM1_Init 0 */
+
+  /* USER CODE END TIM1_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+  TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
+
+  /* USER CODE BEGIN TIM1_Init 1 */
+
+  /* USER CODE END TIM1_Init 1 */
+  htim1.Instance = TIM1;
+  htim1.Init.Prescaler = 190 - 1;
+  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim1.Init.Period = 1005 - 1;
+  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim1.Init.RepetitionCounter = 0;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 503 - 1;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
+  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
+  sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
+  sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
+  sBreakDeadTimeConfig.DeadTime = 0;
+  sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
+  sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
+  sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
+  if (HAL_TIMEx_ConfigBreakDeadTime(&htim1, &sBreakDeadTimeConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM1_Init 2 */
+
+  /* USER CODE END TIM1_Init 2 */
+  HAL_TIM_MspPostInit(&htim1);
+
+}
+
+/**
   * @brief TIM2 Initialization Function
   * @param None
   * @retval None
@@ -193,7 +381,6 @@ static void MX_TIM2_Init(void)
 
   TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
-  TIM_OC_InitTypeDef sConfigOC = {0};
 
   /* USER CODE BEGIN TIM2_Init 1 */
 
@@ -213,28 +400,15 @@ static void MX_TIM2_Init(void)
   {
     Error_Handler();
   }
-  if (HAL_TIM_PWM_Init(&htim2) != HAL_OK)
-  {
-    Error_Handler();
-  }
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
   if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
   {
     Error_Handler();
   }
-  sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 0;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
-  {
-    Error_Handler();
-  }
   /* USER CODE BEGIN TIM2_Init 2 */
 
   /* USER CODE END TIM2_Init 2 */
-  HAL_TIM_MspPostInit(&htim2);
 
 }
 
