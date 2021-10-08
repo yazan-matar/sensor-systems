@@ -69,8 +69,8 @@ TIM_HandleTypeDef htim2;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-
-int n = 1;
+int n = 0;
+uint32_t tickstart;
 Note score[] = {
 		{_SOL4, 6},
 		{_LA4, 2},
@@ -107,11 +107,33 @@ static void MX_TIM2_Init(void);
 static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
 void playnote(Note note);
-void playsong(void);
+void playscore(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+	if (htim == &htim2) {
+		HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_2);
+	    HAL_GPIO_TogglePin(LED_PIN);
+
+
+	    int length = sizeof(score)/sizeof(score[0]);
+	    if(n < length){
+		    playnote(score[n]);
+	    	n++;
+	    }
+	    else{
+	    	n = 0;
+	    	HAL_TIM_Base_Stop_IT(&htim2);
+	    }
+	    tickstart = HAL_GetTick() - tickstart;
+	    __HAL_TIM_CLEAR_IT(&htim2 ,TIM_IT_UPDATE);
+	}
+}
+
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
 	GPIO_PinState snapfinger;
@@ -120,10 +142,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	switch (GPIO_Pin){
 	case GPIO_PIN_8: //Microphone
 		snapfinger = HAL_GPIO_ReadPin(MICROPHONE);
-		HAL_GPIO_WritePin(LED_PIN, snapfinger);
-//		 playnote(score[n]);
-//		 n++;
-		playsong();
+		HAL_TIM_Base_Start_IT(&htim2);
+		HAL_GPIO_WritePin(LED_PIN, snapfinger); //Lights up LD2
+
+//		playscore();
 		break;
 	case GPIO_PIN_13: //Button
 		pushbutton = HAL_GPIO_ReadPin(BLUE_BUTTON);
@@ -135,12 +157,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 }
 
 void playnote(Note note){
-//	  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
-//	  TIM_MasterConfigTypeDef sMasterConfig = {0};
 	  TIM_OC_InitTypeDef sConfigOC = {0};
-//	  TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
 
-
+	  /*
+	   * TIM1
+	   * */
 	  htim1.Instance = TIM1;
 	  htim1.Init.Prescaler = 100 - 1;
 	  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
@@ -169,30 +190,36 @@ void playnote(Note note){
 	    Error_Handler();
 	  }
 
-//	  HAL_TIM_Base_Start_IT(&htim1);
+	  /**
+	   * TIM2
+	   */
+	  htim2.Instance = TIM2;
+	  htim2.Init.Prescaler = 8400 - 1;
+	  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+	  htim2.Init.Period = (note.duration * TEMPO * 10) - 1;
+	  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+	  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+	  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+	  {
+	    Error_Handler();
+	  }
+	  tickstart = HAL_GetTick();
+
 	  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
+
 //	  HAL_Delay(note.duration * TEMPO);
 
-	  for (int i = 0; i < note.duration * TEMPO * 5700; ++i) {
-
-	  }
-
-//	  __HAL_TIM_SET_COUNTER(&htim1, 0);
-//	  while (1) {
-//		  int x = __HAL_TIM_GET_COUNTER(&htim1);
-//		  int y = htim1.Init.Period;
-//		  if(__HAL_TIM_GET_COUNTER(&htim1) >= htim1.Init.Period)
-//			  break;
+//	  for (int i = 0; i < note.duration * TEMPO * 5700; ++i) {
+//
 //	  }
-//	  HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_2);
-//	  HAL_TIM_Base_Stop_IT(&htim1);
 
-	  HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_2);
+//	  HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_2);
 
 }
 
-void playsong(){
+void playscore(){
 	int length = sizeof(score)/sizeof(score[0]);
+
 	for (int i = 0; i < length; ++i) {
 		playnote(score[i]);
 	}
@@ -231,10 +258,7 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
-//  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
-//  playsong();
-//  HAL_InitTick(0);
-//  HAL_NVIC_SetPriority(PVD_IRQn, 1, 0U);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -386,7 +410,7 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 8400 - 1;
+  htim2.Init.Prescaler = 8400- 1;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim2.Init.Period = 10000 - 1;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
