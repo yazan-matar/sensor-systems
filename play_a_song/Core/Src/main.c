@@ -69,8 +69,11 @@ TIM_HandleTypeDef htim2;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-int n = 0;
-uint32_t tickstart;
+
+int currentNote = 0; //Index of the current note to be played in the score
+/*
+ * LONDON BRIDGE IS FALLING DOWN
+ */
 Note score[] = {
 		{_SOL4, 6},
 		{_LA4, 2},
@@ -105,62 +108,76 @@ static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM1_Init(void);
+
 /* USER CODE BEGIN PFP */
+
 void playnote(Note note);
-void playscore(void);
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+/**
+ * TIMER INTERRUPT CALLBACK
+ * 	   When TIM2 elapses, it stops the PWM on TIM1 and plays the next note, until the last note is played
+ */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	if (htim == &htim2) {
 		HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_2);
 	    HAL_GPIO_TogglePin(LED_PIN);
 
-
-	    int length = sizeof(score)/sizeof(score[0]);
-	    if(n < length){
-		    playnote(score[n]);
-	    	n++;
+	    int scoreLength = sizeof(score)/sizeof(score[0]);
+	    if(currentNote < scoreLength){
+		    playnote(score[currentNote]);
+	    	currentNote++;
 	    }
 	    else{
-	    	n = 0;
+	    	currentNote = 0;
 	    	HAL_TIM_Base_Stop_IT(&htim2);
 	    }
-	    tickstart = HAL_GetTick() - tickstart;
-	    __HAL_TIM_CLEAR_IT(&htim2 ,TIM_IT_UPDATE);
+	    __HAL_TIM_CLEAR_IT(&htim2 ,TIM_IT_UPDATE); //Clears interrupt bits
+//	    __HAL_TIM_SET_COUNTER(&htim2, 0);
+
 	}
 }
 
+/**
+ * EXTERNAL INTERRUPT CALLBACK
+ * 	   When the microphone detects a sound, TIM2's timer starts counting
+ * 	   When the button is pressed, LD2 led lights up
+ */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-	GPIO_PinState snapfinger;
-	GPIO_PinState pushbutton;
+	GPIO_PinState snapFinger;
+	GPIO_PinState pushButton;
 
 	switch (GPIO_Pin){
-	case GPIO_PIN_8: //Microphone
-		snapfinger = HAL_GPIO_ReadPin(MICROPHONE);
-		HAL_TIM_Base_Start_IT(&htim2);
-		HAL_GPIO_WritePin(LED_PIN, snapfinger); //Lights up LD2
-
-//		playscore();
+	case GPIO_PIN_8: 								//MICROPHONE
+		snapFinger = HAL_GPIO_ReadPin(MICROPHONE);
+		HAL_TIM_Base_Start_IT(&htim2); 				//TIM2 starts to count
+		HAL_GPIO_WritePin(LED_PIN, snapFinger); 	//Lights up LD2
 		break;
-	case GPIO_PIN_13: //Button
-		pushbutton = HAL_GPIO_ReadPin(BLUE_BUTTON);
-		HAL_GPIO_WritePin(LED_PIN, !pushbutton);
+	case GPIO_PIN_13: 								//BUTTON
+		pushButton = HAL_GPIO_ReadPin(BLUE_BUTTON);
+		HAL_GPIO_WritePin(LED_PIN, !pushButton);
 		break;
 	default:
 		break;
 	}
 }
 
+/**
+ * Sets up TIM1 and TIM2, then starts the PWM generation
+ */
 void playnote(Note note){
 	  TIM_OC_InitTypeDef sConfigOC = {0};
 
-	  /*
-	   * TIM1
+	  /**
+	   * TIM1 update of Period (TIM1->ARR) and Pulse (TIM1 Duty Cycle)
+	   * 	For each note, we set the corresponding equivalent frequency through the TIM1->ARR peripheral register
+	   * 	After the setup, PWM generation begins
 	   * */
 	  htim1.Instance = TIM1;
 	  htim1.Init.Prescaler = 100 - 1;
@@ -191,7 +208,10 @@ void playnote(Note note){
 	  }
 
 	  /**
-	   * TIM2
+	   * TIM1 update of Period (TIM1->ARR)
+	   * 	For each note, we set the corresponding duration, given a constant tempo.
+	   * 	The (*10) factor on the period is used to reach a frequency of 1 kHz,
+	   * 	and then prescale it by duration * TEMPO
 	   */
 	  htim2.Instance = TIM2;
 	  htim2.Init.Prescaler = 8400 - 1;
@@ -203,27 +223,11 @@ void playnote(Note note){
 	  {
 	    Error_Handler();
 	  }
-	  tickstart = HAL_GetTick();
 
 	  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
 
-//	  HAL_Delay(note.duration * TEMPO);
-
-//	  for (int i = 0; i < note.duration * TEMPO * 5700; ++i) {
-//
-//	  }
-
-//	  HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_2);
-
 }
 
-void playscore(){
-	int length = sizeof(score)/sizeof(score[0]);
-
-	for (int i = 0; i < length; ++i) {
-		playnote(score[i]);
-	}
-}
 /* USER CODE END 0 */
 
 /**
@@ -257,6 +261,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_TIM2_Init();
   MX_TIM1_Init();
+
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
