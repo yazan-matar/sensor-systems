@@ -78,23 +78,8 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 
 	snprintf(buffer, sizeof(buffer), "%s%.3f%s%s", "Voltage: ", voltage, " V");
 	lcd_println(buffer, 0);
-	if (voltage < 0.5)							lcd_drawBar(0);
-	else if (voltage >= 0.2 && voltage < 0.4 )	lcd_drawBar(1*BAR);
-	else if (voltage >= 0.4 && voltage < 0.6 )	lcd_drawBar(2*BAR);
-	else if (voltage >= 0.6 && voltage < 0.8 )	lcd_drawBar(3*BAR);
-	else if (voltage >= 0.8 && voltage < 1.0 )	lcd_drawBar(4*BAR);
-	else if (voltage >= 1.0 && voltage < 1.2 )	lcd_drawBar(5*BAR);
-	else if (voltage >= 1.2 && voltage < 1.4 )	lcd_drawBar(6*BAR);
-	else if (voltage >= 1.4 && voltage < 1.6 )	lcd_drawBar(7*BAR);
-	else if (voltage >= 1.6 && voltage < 1.8 )	lcd_drawBar(8*BAR);
-	else if (voltage >= 1.8 && voltage < 2.0 )	lcd_drawBar(9*BAR);
-	else if (voltage >= 2.0 && voltage < 2.2 )	lcd_drawBar(10*BAR);
-	else if (voltage >= 2.2 && voltage < 2.4 )	lcd_drawBar(11*BAR);
-	else if (voltage >= 2.4 && voltage < 2.6 )	lcd_drawBar(12*BAR);
-	else if (voltage >= 2.6 && voltage < 2.8 )	lcd_drawBar(13*BAR);
-	else if (voltage >= 2.8 && voltage < 3.0 )	lcd_drawBar(14*BAR);
-	else if (voltage >= 3.0 && voltage < 3.2 )	lcd_drawBar(15*BAR);
-	else if (voltage >= 3.2 && voltage < 3.3 )	lcd_drawBar(16*BAR-1);
+	lcd_drawBar(voltage * 5 * BAR - 3); // -3 is an empiric value so that the code doesn't crash
+
 
 //	__HAL_TIM_CLEAR_IT(&htim2, TIM_IT_UPDATE);
 }
