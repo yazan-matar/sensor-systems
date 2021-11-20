@@ -63,14 +63,7 @@ static void MX_TIM2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-	if (htim == &htim2){
-		HAL_ADC_Start_IT(&hadc1);
-//		__HAL_TIM_CLEAR_IT(&htim2, TIM_IT_UPDATE);
-	}
 
-}
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 	char buffer[20];
 	int value = HAL_ADC_GetValue(&hadc1);
@@ -78,10 +71,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 
 	snprintf(buffer, sizeof(buffer), "%s%.3f%s%s", "Voltage: ", voltage, " V");
 	lcd_println(buffer, 0);
-	lcd_drawBar(voltage * 5 * BAR - 3); // -3 is an empiric value so that the code doesn't crash
-
-
-//	__HAL_TIM_CLEAR_IT(&htim2, TIM_IT_UPDATE);
+	lcd_drawBar(voltage * 5 * BAR);
 }
 
 /* USER CODE END 0 */
@@ -119,12 +109,10 @@ int main(void)
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   lcd_initialize();
-  lcd_clear();
 
-  HAL_TIM_Base_Start_IT(&htim2);
-//  __HAL_TIM_CLEAR_IT(&htim2, TIM_IT_UPDATE);
-  NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_1);
-  HAL_NVIC_SetPriority(ADC_IRQn, 1, 0);
+  HAL_TIM_Base_Start(&htim2);
+  HAL_ADC_Start_IT(&hadc1);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */

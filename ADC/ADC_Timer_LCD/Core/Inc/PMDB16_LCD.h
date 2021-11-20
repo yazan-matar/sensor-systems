@@ -2,6 +2,10 @@
 #include "stdio.h"
 #include "stm32f4xx_hal.h"
 
+//Version 1.1
+//Fix buffer overflow when drawbar was called with a parameter equal to 80
+//Remove HAL_Delay functions to simplify the use of the LCD in interrupt callbacks
+
 #define CHAR_1_5 0x01
 #define CHAR_2_5 0x02
 #define CHAR_3_5 0x03
@@ -26,6 +30,8 @@
 #define LCD_SETDRAMADD 0x80
 
 //Auxiliary functions
+uint32_t DWT_Delay_Init(void);
+void DWT_Delay_us(volatile uint32_t);
 void lcd_enable();
 void lcd_write4(uint8_t);
 void lcd_write(uint8_t);

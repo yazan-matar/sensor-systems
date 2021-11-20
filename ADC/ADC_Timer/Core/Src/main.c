@@ -62,19 +62,13 @@ static void MX_TIM2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-	if (htim == &htim2){
-		HAL_ADC_Start_IT(&hadc1);
-	}
 
-}
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 	int buffer[50];
 	int value = HAL_ADC_GetValue(&hadc1);
-	float voltage = value*3.3/4096.0; //make sure that it's a float with the division
+	float voltage = value*3.3/4096.0; //4096.0 just to make sure that it's a float with the division
 	int length = snprintf(buffer, sizeof(buffer), "Timer %.3f\r\n", voltage);
-	HAL_UART_Transmit(&huart2, buffer, length, 100);
+	HAL_UART_Transmit(&huart2, (uint8_t *)buffer, length, 100);
 }
 
 /* USER CODE END 0 */
@@ -111,8 +105,8 @@ int main(void)
   MX_ADC1_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
-  HAL_TIM_Base_Start_IT(&htim2);
-__HAL_TIM_CLEAR_IT(&htim2, TIM_IT_UPDATE);
+  HAL_TIM_Base_Start(&htim2);
+  HAL_ADC_Start_IT(&hadc1);
   /* USER CODE END 2 */
 
   /* Infinite loop */

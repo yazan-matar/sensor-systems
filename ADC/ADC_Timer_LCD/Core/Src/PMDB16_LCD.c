@@ -2,6 +2,10 @@
 #include "stdio.h"
 #include "stm32f4xx_hal.h"
 
+//Version 1.1
+//Fix buffer overflow when drawbar was called with a parameter equal to 80
+//Remove HAL_Delay functions to simplify the use of the LCD in interrupt callbacks
+
 #define CHAR_1_5 0x01
 #define CHAR_2_5 0x02
 #define CHAR_3_5 0x03
@@ -28,15 +32,62 @@ uint8_t CUSTOM_5_5[] ={0x1F,0x1F,0x1F,0x1F,0x1F,0x1F,0x1F,0x1F};
 #define LCD_D7 GPIOB,GPIO_PIN_15
 #define LCD_BL_ON GPIOA,GPIO_PIN_4
 
+//Microsecond delay functions. Credit:
+//https://deepbluembedded.com/stm32-delay-microsecond-millisecond-utility-dwt-delay-timer-delay/
+
+uint32_t DWT_Delay_Init(void)
+{
+    /* Disable TRC */
+    CoreDebug->DEMCR &= ~CoreDebug_DEMCR_TRCENA_Msk; // ~0x01000000;
+    /* Enable TRC */
+    CoreDebug->DEMCR |=  CoreDebug_DEMCR_TRCENA_Msk; // 0x01000000;
+
+    /* Disable clock cycle counter */
+    DWT->CTRL &= ~DWT_CTRL_CYCCNTENA_Msk; //~0x00000001;
+    /* Enable  clock cycle counter */
+    DWT->CTRL |=  DWT_CTRL_CYCCNTENA_Msk; //0x00000001;
+
+    /* Reset the clock cycle counter value */
+    DWT->CYCCNT = 0;
+
+    /* 3 NO OPERATION instructions */
+    __ASM volatile ("NOP");
+    __ASM volatile ("NOP");
+    __ASM volatile ("NOP");
+
+    /* Check if clock cycle counter has started */
+    if(DWT->CYCCNT)
+    {
+       return 0; /*clock cycle counter started*/
+    }
+    else
+    {
+      return 1; /*clock cycle counter not started*/
+    }
+}
+
+void DWT_Delay_us(volatile uint32_t au32_microseconds)
+{
+  uint32_t au32_initial_ticks = DWT->CYCCNT;
+  uint32_t au32_ticks = (HAL_RCC_GetHCLKFreq() / 1000000);
+  au32_microseconds *= au32_ticks;
+  while ((DWT->CYCCNT - au32_initial_ticks) < au32_microseconds-au32_ticks);
+}
+
 
 //  LCD code
+
+
 void lcd_enable(){
-	HAL_GPIO_WritePin(LCD_E, GPIO_PIN_RESET);
-	HAL_Delay(1);
+	//HAL_GPIO_WritePin(LCD_E, GPIO_PIN_RESET);
+	//HAL_Delay(1);
+	//DWT_Delay_us(50);
 	HAL_GPIO_WritePin(LCD_E, GPIO_PIN_SET);  //pulse needs to be some clock cycles long, we are not in hurry right now
-	HAL_Delay(1);
+	//HAL_Delay(1);
+	DWT_Delay_us(50);
 	HAL_GPIO_WritePin(LCD_E, GPIO_PIN_RESET);
-	HAL_Delay(1);
+	//HAL_Delay(1);
+	DWT_Delay_us(50);
 }
 
 //  write a nibble (4 bits)
@@ -133,6 +184,8 @@ void lcd_drawBar(int value){ //draws a bar using custom characters and spaces
 	if (value>80)
 		value = 80;
 	int quotient = value / 5;
+	if (quotient == 16)
+		quotient = 15;
 	int modulo = value % 5;
 	
 	int i = 0;
@@ -158,8 +211,9 @@ void lcd_initialize(){  //initialize WH1602C LCD module in 4 bit mode, page 25
 
 	HAL_Delay(50);  //wait >40 ms as per datasheet
 	HAL_GPIO_WritePin(LCD_RS, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(LCD_E, GPIO_PIN_RESET);
 	//LCD WritePIn is hard-wired low as per board schematic
-
+	DWT_Delay_Init();
 	//Magic reset sequence
 	lcd_write4(0x03);  //4-bit mode
 	HAL_Delay(5);
@@ -172,6 +226,7 @@ void lcd_initialize(){  //initialize WH1602C LCD module in 4 bit mode, page 25
 	HAL_Delay(5);
 	lcd_write(0x08); //display off;
 	lcd_write(LCD_CLEAR_COMMAND); 			 //display clear;
+	HAL_Delay(5);
 	lcd_write(0x06); //entry mode set: increment
 	HAL_GPIO_WritePin(LCD_BL_ON, GPIO_PIN_SET);  //enable backlight
 	//_display_ctrl = DISPLAY_COMMAND|DISPLAY_ON|CURSOR_ON|BLINK_ON;

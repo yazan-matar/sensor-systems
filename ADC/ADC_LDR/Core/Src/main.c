@@ -34,6 +34,10 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define BUFLEN 1000
+#define KOHM 1000
+#define VDD 3.3
+#define ADC_LEVELS 4096
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -45,13 +49,12 @@
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
 
-TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim2;
 
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-uint16_t LDR_values[1000] = {0};
-int sample = 0;
+uint32_t ADC_array[2*BUFLEN] = {0};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -60,49 +63,44 @@ static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_DMA_Init(void);
 static void MX_ADC1_Init(void);
-static void MX_TIM1_Init(void);
+static void MX_TIM2_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-	if (htim == &htim1){
-		HAL_ADC_Start_IT(&hadc1);
+
+void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc){
+	uint32_t avg = 0;
+	for (int i = 0; i < BUFLEN; ++i) {
+		avg += ADC_array[i];
 	}
 
-}
+	float voltage = (avg / BUFLEN) * VDD / ADC_LEVELS;
+	float resistance = (voltage * 100*KOHM)/ (VDD - voltage);
+	float lux = 10* powf((100*KOHM / resistance), 1.25);
 
+	char buffer[100];
+	int buffer_length = snprintf(buffer, sizeof(buffer), "Resistance1: %.0f Ohm\r\nAvg. Light: %.2f Lux\r\n\r\n", resistance, lux);
+	HAL_UART_Transmit(&huart2, (uint8_t *)buffer, buffer_length, 100);
+}
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
+	uint32_t avg = 0;
+	for (int i = BUFLEN; i < 2*BUFLEN; ++i) {
+		avg += ADC_array[i];
+	}
+
+	float voltage = (avg / BUFLEN) * VDD / ADC_LEVELS;
+	float resistance = (voltage * 100*KOHM)/ (VDD - voltage);
+	float lux = 10* powf((100*KOHM / resistance), 1.25);
+
 	char buffer[100];
-	int samples_length = sizeof(LDR_values)/sizeof(LDR_values[0]);
-	if (sample <= samples_length) {
-		LDR_values[sample++] = HAL_ADC_GetValue(&hadc1);
-	}
-	else{
-		int LDR_sum = 0;
-		float avg_LDR = 0;
-		float avg_LUX = 0;
-		//To check the calculations
-		float v_ADC = 0;
-		float calculated_LDR = 0;
-
-		for (int i = 0; i < samples_length; ++i) {
-			LDR_sum += LDR_values[i];
-		}
-		avg_LDR = LDR_sum/samples_length;
-		v_ADC = 3.3 * (avg_LDR)/(avg_LDR + 100000.0);
-		avg_LUX = 10* powf((100000.0/avg_LDR), 1.25);
-		calculated_LDR = 100000.0/powf(avg_LUX/10.0, 0.8);
-
-		int buffer_length = snprintf(buffer, sizeof(buffer), "Avg. LDR: %.3f\r\nAvg. LUX: %.3f\r\nCalc. LDR: %.3f\r\n\r\n", avg_LDR, avg_LUX, calculated_LDR);
-		HAL_UART_Transmit(&huart2, (uint8_t *)buffer, buffer_length, 100);
-		sample = 0;
-	}
+	int buffer_length = snprintf(buffer, sizeof(buffer), "Resistance2: %.0f Ohm\r\nAvg. Light: %.2f Lux\r\n\r\n", resistance, lux);
+	HAL_UART_Transmit(&huart2, (uint8_t *)buffer, buffer_length, 100);
 }
+
 /* USER CODE END 0 */
 
 /**
@@ -136,10 +134,11 @@ int main(void)
   MX_USART2_UART_Init();
   MX_DMA_Init();
   MX_ADC1_Init();
-  MX_TIM1_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
-  HAL_TIM_Base_Start_IT(&htim1);
-__HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE);
+  HAL_TIM_Base_Start(&htim2);
+  HAL_ADC_Start_DMA(&hadc1, ADC_array, 2*BUFLEN);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -222,11 +221,11 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ScanConvMode = DISABLE;
   hadc1.Init.ContinuousConvMode = DISABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
-  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
+  hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T2_TRGO;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.NbrOfConversion = 1;
-  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.DMAContinuousRequests = ENABLE;
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
   {
@@ -236,7 +235,7 @@ static void MX_ADC1_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_0;
   sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  sConfig.SamplingTime = ADC_SAMPLETIME_480CYCLES;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -248,48 +247,47 @@ static void MX_ADC1_Init(void)
 }
 
 /**
-  * @brief TIM1 Initialization Function
+  * @brief TIM2 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_TIM1_Init(void)
+static void MX_TIM2_Init(void)
 {
 
-  /* USER CODE BEGIN TIM1_Init 0 */
+  /* USER CODE BEGIN TIM2_Init 0 */
 
-  /* USER CODE END TIM1_Init 0 */
+  /* USER CODE END TIM2_Init 0 */
 
   TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
 
-  /* USER CODE BEGIN TIM1_Init 1 */
+  /* USER CODE BEGIN TIM2_Init 1 */
 
-  /* USER CODE END TIM1_Init 1 */
-  htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 840 - 1;
-  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 100 - 1;
-  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim1.Init.RepetitionCounter = 0;
-  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 840 - 1;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 100 - 1;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
   {
     Error_Handler();
   }
   sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
   {
     Error_Handler();
   }
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN TIM1_Init 2 */
+  /* USER CODE BEGIN TIM2_Init 2 */
 
-  /* USER CODE END TIM1_Init 2 */
+  /* USER CODE END TIM2_Init 2 */
 
 }
 
