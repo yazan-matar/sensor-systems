@@ -32,6 +32,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -42,16 +44,37 @@
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c1;
 
+TIM_HandleTypeDef htim2;
+
 UART_HandleTypeDef huart2;
+DMA_HandleTypeDef hdma_usart2_tx;
 
 /* USER CODE BEGIN PV */
+uint8_t LIS2DE_ADDR = 0b01010000;
+uint8_t LIS2DE12_ADDR = 0b00110000;
+uint8_t ACC_ADDR = 0;
 
+/*
+ * AAAABCCC
+ * AAAA: Data Rate Selection
+ * B: Low Power Enable
+ * C: XYZ Axis Enable
+ */
+uint8_t CTRL_REG1[] = {0x20, 0b00010111}; //1Hz, no low power, all three axis enabled
+uint8_t CTRL_REG2[] = {0x21, 0b00000000};
+uint8_t CTRL_REG4[]  ={0x23, 0b00000000};
+
+uint8_t OUT_X_ADDR = 0x29;
+uint8_t OUT_Y_ADDR = 0x2B;
+uint8_t OUT_Z_ADDR = 0x2D;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
+static void MX_DMA_Init(void);
+static void MX_TIM2_Init(void);
 static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
 
@@ -59,7 +82,33 @@ static void MX_I2C1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+	if (htim == &htim2){
+		int8_t acc_x = 0;
+		HAL_I2C_Master_Transmit(&hi2c1, ACC_ADDR + 0, &OUT_X_ADDR, 1, 50);
+		HAL_I2C_Master_Receive(&hi2c1, ACC_ADDR + 1, &acc_x, 1, 50);
 
+		int8_t acc_y = 0;
+		HAL_I2C_Master_Transmit(&hi2c1, ACC_ADDR + 0, &OUT_Y_ADDR, 1, 50);
+		HAL_I2C_Master_Receive(&hi2c1, ACC_ADDR + 1, &acc_y, 1, 50);
+
+		int8_t acc_z = 0;
+		HAL_I2C_Master_Transmit(&hi2c1, ACC_ADDR + 0, &OUT_Z_ADDR, 1, 50);
+		HAL_I2C_Master_Receive(&hi2c1, ACC_ADDR + 1, &acc_z, 1, 50);
+		/*
+		 * FSR = +-2g = 4g
+		 * We have a mapping into 8 bit numbers, so LSB = 4g/256
+		 */
+		float acc_g_x = acc_x / 64.0;
+		float acc_g_y = acc_y / 64.0;
+		float acc_g_z = acc_z / 64.0;
+		uint8_t buffer[50];
+		uint8_t buflen = snprintf(buffer, sizeof(buffer), "DMA\r\nX: %+.2f g\r\nY: %+.2f g\r\nZ: %+.2f g\r\n\r\n", acc_g_x, acc_g_y, acc_g_z);
+		HAL_UART_Transmit_DMA(&huart2, buffer, buflen);
+	}
+
+}
 /* USER CODE END 0 */
 
 /**
@@ -85,21 +134,46 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-
+  MX_DMA_Init();
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART2_UART_Init();
+
+  MX_TIM2_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
+  char buffer[50];
+  int buflen = 0;
 
+  if(HAL_I2C_Master_Transmit(&hi2c1, LIS2DE_ADDR + 0, CTRL_REG1, sizeof(CTRL_REG1), 50) == HAL_OK){
+	  buflen = snprintf(buffer, sizeof(buffer), "LISDE found!\r\n");
+	  ACC_ADDR = LIS2DE_ADDR;
+  }
+  else{
+	  if(HAL_I2C_Master_Transmit(&hi2c1, LIS2DE12_ADDR + 0, CTRL_REG1, sizeof(CTRL_REG1), 50) == HAL_OK){
+		  buflen = snprintf(buffer, sizeof(buffer), "LISDE12 found!\r\n");
+		  ACC_ADDR = LIS2DE12_ADDR;
+	  }
+	  else{
+		  buflen = snprintf(buffer, sizeof(buffer), "Error: accelerometer NOT found!\r\n");
+	  }
+  }
+
+  HAL_UART_Transmit(&huart2, buffer, buflen, 100);
+
+  HAL_I2C_Master_Transmit(&hi2c1, ACC_ADDR + 0, CTRL_REG2, sizeof(CTRL_REG2), 50);
+  HAL_I2C_Master_Transmit(&hi2c1, ACC_ADDR + 0, CTRL_REG4, sizeof(CTRL_REG4), 50);
+
+  HAL_TIM_Base_Start_IT(&htim2);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -186,6 +260,51 @@ static void MX_I2C1_Init(void)
 }
 
 /**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 8400 - 1;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 10000 - 1;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
+
+}
+
+/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -215,6 +334,22 @@ static void MX_USART2_UART_Init(void)
   /* USER CODE BEGIN USART2_Init 2 */
 
   /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Stream6_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream6_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream6_IRQn);
 
 }
 
