@@ -35,6 +35,8 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define RCLK_PIN	GPIOB, GPIO_PIN_6	//CS PIN
+#define ROWS 5
+#define COLS 2
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -57,7 +59,9 @@ int col_index = 0;
  */
 
 uint8_t buffer[5][2];
-char str[100] = "AB";//A B C D E F G H I J K L M N O P Q R S T U V W X Y Z 0 1 2 3 4 5 6 7 8 9
+//"A B C D E F G H I J K L M N O P Q R S T U V W X Y Z 0 1 2 3 4 5 6 7 8 9 "
+char str[100] = "A B C D E F G H I J K L M N O P Q R S T U V W X Y Z 0 1 2 3 4 5 6 7 8 9 ";
+
 
 /* USER CODE END PV */
 
@@ -74,15 +78,162 @@ static void MX_TIM2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-	if (htim == &htim2){
-		HAL_SPI_Transmit(&hspi1, buffer[col_index], 2, 50);
-		HAL_GPIO_WritePin(RCLK_PIN, GPIO_PIN_SET);
-		if (++col_index > 4) {
-			col_index = 0;
+void setString(char *str, uint16_t length, uint16_t delay){
+
+	for (uint16_t i = 0; i < length; i++){
+		switch (str[i]){
+		case 'A':
+			memcpy(buffer, A, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case 'B':
+			memcpy(buffer, B, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case 'C':
+			memcpy(buffer, C, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case 'D':
+			memcpy(buffer, D, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case 'E':
+			memcpy(buffer, E, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case 'F':
+			memcpy(buffer, F, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case 'G':
+			memcpy(buffer, G, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case 'H':
+			memcpy(buffer, H, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case 'I':
+			memcpy(buffer, I, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case 'J':
+			memcpy(buffer, J, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case 'K':
+			memcpy(buffer, K, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case 'L':
+			memcpy(buffer, L, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case 'M':
+			memcpy(buffer, M, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case 'N':
+			memcpy(buffer, N, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case 'O':
+			memcpy(buffer, O, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case 'P':
+			memcpy(buffer, P, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case 'Q':
+			memcpy(buffer, Q, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case 'R':
+			memcpy(buffer, R, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case 'S':
+			memcpy(buffer, S, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case 'T':
+			memcpy(buffer, T, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case 'U':
+			memcpy(buffer, U, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case 'V':
+			memcpy(buffer, V, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case 'W':
+			memcpy(buffer, W, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case 'X':
+			memcpy(buffer, X, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case 'Y':
+			memcpy(buffer, Y, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case 'Z':
+			memcpy(buffer, Z, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case '0':
+			memcpy(buffer, ZERO, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case '1':
+			memcpy(buffer, ONE, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case '2':
+			memcpy(buffer, TWO, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case '3':
+			memcpy(buffer, THREE, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case '4':
+			memcpy(buffer, FOUR, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case '5':
+			memcpy(buffer, FIVE, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case '6':
+			memcpy(buffer, SIX, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case '7':
+			memcpy(buffer, SEVEN, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case '8':
+			memcpy(buffer, EIGHT, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case '9':
+			memcpy(buffer, NINE, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		case ' ':
+			memcpy(buffer, BLANK, ROWS*COLS*sizeof(uint8_t));
+			HAL_Delay(delay);
+			break;
+		default:
+			memcpy(buffer, BLANK, ROWS*COLS*sizeof(uint8_t));
+			break;
 		}
-		HAL_GPIO_WritePin(RCLK_PIN, GPIO_PIN_RESET);
 	}
 }
 /* USER CODE END 0 */
@@ -121,169 +272,15 @@ int main(void)
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start_IT(&htim2);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-
-	for (uint16_t i = 0; i < sizeof(str)/sizeof(str[0]); i++){
-		switch (str[i]){
-		case 'A':
-			memcpy(buffer, A, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case 'B':
-			memcpy(buffer, B, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case 'C':
-			memcpy(buffer, C, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case 'D':
-			memcpy(buffer, D, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case 'E':
-			memcpy(buffer, E, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case 'F':
-			memcpy(buffer, F, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case 'G':
-			memcpy(buffer, G, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case 'H':
-			memcpy(buffer, H, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case 'I':
-			memcpy(buffer, I, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case 'J':
-			memcpy(buffer, J, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case 'K':
-			memcpy(buffer, K, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case 'L':
-			memcpy(buffer, L, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case 'M':
-			memcpy(buffer, M, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case 'N':
-			memcpy(buffer, N, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case 'O':
-			memcpy(buffer, O, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case 'P':
-			memcpy(buffer, P, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case 'Q':
-			memcpy(buffer, Q, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case 'R':
-			memcpy(buffer, R, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case 'S':
-			memcpy(buffer, S, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case 'T':
-			memcpy(buffer, T, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case 'U':
-			memcpy(buffer, U, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case 'V':
-			memcpy(buffer, V, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case 'W':
-			memcpy(buffer, W, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case 'X':
-			memcpy(buffer, X, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case 'Y':
-			memcpy(buffer, Y, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case 'Z':
-			memcpy(buffer, Z, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case '0':
-			memcpy(buffer, ZERO, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case '1':
-			memcpy(buffer, ONE, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case '2':
-			memcpy(buffer, TWO, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case '3':
-			memcpy(buffer, THREE, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case '4':
-			memcpy(buffer, FOUR, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case '5':
-			memcpy(buffer, FIVE, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case '6':
-			memcpy(buffer, SIX, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case '7':
-			memcpy(buffer, SEVEN, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case '8':
-			memcpy(buffer, EIGHT, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case '9':
-			memcpy(buffer, NINE, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		case ' ':
-			memcpy(buffer, BLANK, 5*2*sizeof(uint8_t));
-			HAL_Delay(500);
-			break;
-		default:
-			memcpy(buffer, BLANK, 5*2*sizeof(uint8_t));
-			break;
-		}
-	}
-
+	  setString(str, sizeof(str)/sizeof(str[0]), 300);
+//	  HAL_SPI_Transmit_DMA(&hspi1, buffer[col_index], 2);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -392,9 +389,9 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 840 - 1;
+  htim2.Init.Prescaler = 840- 1;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 400 - 1;
+  htim2.Init.Period = 400- 1;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -501,7 +498,27 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+	if (htim == &htim2){
+		HAL_SPI_Transmit(&hspi1, buffer[col_index], 2, 100);
+		HAL_GPIO_WritePin(RCLK_PIN, GPIO_PIN_SET);
+		if (++col_index > 4) {
+			col_index = 0;
+		}
+		HAL_GPIO_WritePin(RCLK_PIN, GPIO_PIN_RESET);
+	}
+}
 
+//void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi){
+//	if(hspi == &hspi1){
+//		HAL_GPIO_WritePin(RCLK_PIN, GPIO_PIN_SET);
+//		if (++col_index > 4) {
+//			col_index = 0;
+//		}
+//		HAL_GPIO_WritePin(RCLK_PIN, GPIO_PIN_RESET);
+//	}
+//}
 /* USER CODE END 4 */
 
 /**
