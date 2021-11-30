@@ -59,7 +59,6 @@ int col_index = 0;
  */
 
 uint8_t buffer[5][2];
-//"A B C D E F G H I J K L M N O P Q R S T U V W X Y Z 0 1 2 3 4 5 6 7 8 9 "
 char str[100] = "A B C D E F G H I J K L M N O P Q R S T U V W X Y Z 0 1 2 3 4 5 6 7 8 9 ";
 
 
@@ -267,8 +266,8 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART2_UART_Init();
-  MX_SPI1_Init();
   MX_DMA_Init();
+  MX_SPI1_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start_IT(&htim2);
@@ -280,7 +279,6 @@ int main(void)
   while (1)
   {
 	  setString(str, sizeof(str)/sizeof(str[0]), 300);
-//	  HAL_SPI_Transmit_DMA(&hspi1, buffer[col_index], 2);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -498,10 +496,22 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+/*
+ * Since DMA is non-blocking, so when this function returns, we should assume that the transfer is IN PROGRESS
+ * Thats why we use the HAL_SPI_TxCpltCallback to toggle the RCLK pin
+ * An alternative would be toggling the RCLK pin and then starting the transfer, and in this case we can avoid
+ * using the HAL_SPI_TxCpltCallback
+ */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	if (htim == &htim2){
-		HAL_SPI_Transmit(&hspi1, buffer[col_index], 2, 100);
+		HAL_SPI_Transmit_DMA(&hspi1, buffer[col_index], 2);
+	}
+}
+
+void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi){
+	if(hspi == &hspi1){
 		HAL_GPIO_WritePin(RCLK_PIN, GPIO_PIN_SET);
 		if (++col_index > 4) {
 			col_index = 0;
@@ -509,16 +519,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		HAL_GPIO_WritePin(RCLK_PIN, GPIO_PIN_RESET);
 	}
 }
-
-//void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi){
-//	if(hspi == &hspi1){
-//		HAL_GPIO_WritePin(RCLK_PIN, GPIO_PIN_SET);
-//		if (++col_index > 4) {
-//			col_index = 0;
-//		}
-//		HAL_GPIO_WritePin(RCLK_PIN, GPIO_PIN_RESET);
-//	}
-//}
 /* USER CODE END 4 */
 
 /**
