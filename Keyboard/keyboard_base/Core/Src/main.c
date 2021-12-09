@@ -40,7 +40,7 @@
 //#define ROW2 GPIOC, GPIO_PIN_13
 //#define ROW3 GPIOC, GPIO_PIN_2
 //#define ROW4 GPIOC, GPIO_PIN_3
-//#define SIZE_LIST (int[]){2, 7, 23, 33, 12, 76}
+
 /*
  * Column outputs
  */
@@ -48,6 +48,9 @@
 //#define COL2 GPIOC, GPIO_PIN_9
 //#define COL3 GPIOC, GPIO_PIN_10
 //#define COL4 GPIOC, GPIO_PIN_11
+
+#define ROW_NUM 4
+#define COL_NUM 4
 
 /* USER CODE END PD */
 
@@ -79,7 +82,7 @@ GPIO_Tuple COL3 = {GPIOC, GPIO_PIN_11};
 
 GPIO_Tuple COLS[4];
 
-char SYMBOLS[5][5];
+char SYMBOLS[4][4];
 
 /* USER CODE END PV */
 
@@ -160,10 +163,10 @@ int main(void)
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 
-  uint16_t buffer[100];
-  uint16_t buflen = 0;
+  uint8_t buffer[100];
+  uint8_t buflen = 0;
   uint8_t isPressed = 0;
-  uint8_t pressCount = 0;
+  uint8_t longPress[4][4] = {0}; //checks if a key has been released or not
 
   /* USER CODE END 2 */
 
@@ -171,19 +174,21 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  /*
-	   * First row has bouncing effects, second row doesn't work at all, rows 3-4 work fine
-	   */
-	  for (int i = 0; i < 4; i++) {
+	  for (int i = 0; i < COL_NUM; i++) {
 		  HAL_GPIO_WritePin(COLS[i].port, COLS[i].pin, 1);
-		  for (int j = 0; j < 4; j++) {
+		  for (int j = 0; j < ROW_NUM; j++) {
 			  HAL_Delay(1);
 			  isPressed = !HAL_GPIO_ReadPin(ROWS[j].port, ROWS[j].pin);
 
 			  if (isPressed) {
-				  buflen = snprintf(buffer, sizeof(buffer), "%c", SYMBOLS[j][i]);
-				  HAL_UART_Transmit(&huart2, buffer, buflen, 100);
-				  HAL_Delay(200);
+				  if (!longPress[j][i]) {
+					  buflen = snprintf(buffer, sizeof(buffer), "%c", SYMBOLS[j][i]);
+					  HAL_UART_Transmit(&huart2, buffer, buflen, 100);
+					  longPress[j][i] = 1;
+				  }
+			  }
+			  else{
+				  longPress[j][i] = 0;
 			  }
 		  }
 		  HAL_GPIO_WritePin(COLS[i].port, COLS[i].pin, 0);
